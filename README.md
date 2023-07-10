@@ -21,3 +21,10 @@ yarn start
 1. 查看 render(beginWork, completeWork)、commit 阶段
 1. 查看 Fiber 的数据结构 `src/react/packages/react-reconciler/src/ReactInternalTypes.js`
 1. 查看 Hooks 的数据结构 `src/react/packages/react-reconciler/src/ReactFiberHooks.old.js`
+
+### areact文件
+1. areact01  TDD模式
+2. areact02  JSX与同步模式
+3. areact03  Fiber与异步模式
+
+
