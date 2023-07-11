@@ -1,3 +1,5 @@
+import '../requestIdleCallbackPolyfill';
+
 function createElement(type, props, ...children) {
   return {
     type,
@@ -50,7 +52,9 @@ class AReactDomRoot {
     }
     workInProgressRoot = this._internalRoot;
     workInProgress = workInProgressRoot.current.alternate;
-    setTimeout(workloop);
+    // setTimeout(workloop);
+
+    window.requestIdleCallback(workloop);
   }
 }
 
@@ -111,7 +115,7 @@ function getNextFiber(fiber) {
 
   // 指针存放当前fiber
   let nextFiber = fiber;
-  while(nextFiber) {
+  while (nextFiber) {
     if (nextFiber.sibling) {
       return nextFiber.sibling;
     } else {
@@ -126,4 +130,19 @@ function createRoot(container) {
   return new AReactDomRoot(container);
 }
 
-export default { createElement, createRoot };
+function act(callback) {
+  callback();
+  return new Promise(resolve => {
+    function loop() {
+      if (workInProgress) {
+        window.requestIdleCallback(loop);
+      } else {
+        resolve();
+      }
+    }
+
+    loop();
+  })
+}
+
+export default { createElement, createRoot, act };
