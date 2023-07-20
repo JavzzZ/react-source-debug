@@ -14,6 +14,8 @@ function createElement(type, props, ...children) {
 
 let workInProgress = null; // 当前处理的fiber节点
 let workInProgressRoot = null; // 储存整个FiberRoot
+let currentHookFiber = null; // 预留指针
+let currentHookIndex = 0; // 当前hook在整个hooks中的索引
 
 // 文本内容
 function createTextElement(text) {
@@ -52,7 +54,6 @@ class AReactDomRoot {
     }
     workInProgressRoot = this._internalRoot;
     workInProgress = workInProgressRoot.current.alternate;
-    // setTimeout(workloop);
 
     window.requestIdleCallback(workloop);
   }
@@ -62,6 +63,11 @@ function workloop() {
   while (workInProgress) {
     workInProgress = performUnitOfWork(workInProgress);
   }
+
+  if (!workInProgress && workInProgressRoot.current.alternate) {
+    workInProgressRoot.current = workInProgressRoot.current.alternate;
+    workInProgressRoot.current.alternate = null;
+  }
 }
 
 function performUnitOfWork(fiber) {
@@ -69,6 +75,9 @@ function performUnitOfWork(fiber) {
   // 1. 处理当前 fiber：创建 DOM，设置 props，插入当前 dom 到 parent
   const isFunctionComponent = fiber.type instanceof Function;
   if (isFunctionComponent) {
+    currentHookFiber = fiber;
+    currentHookFiber.memorizedState = [];
+    currentHookIndex = 0;
     fiber.props.children = [fiber.type(fiber.props)];
   } else {
     if (!fiber.stateNode) {
@@ -90,12 +99,37 @@ function performUnitOfWork(fiber) {
 
   // 2. 初始化 children 的fiber
   let prevSibling = null;
+  // mount 阶段 oldFiber 为空，update 阶段为上一次的值
+  let oldFiber = fiber.alternate?.child;
+
   fiber.props.children.forEach((child, index) => {
-    const newFiber = {
-      type: child.type,
-      stateNode: null,
-      props: child.props,
-      return: fiber,
+    let newFiber = null;
+    if (!oldFiber) {
+      // new
+      newFiber = {
+        type: child.type,
+        stateNode: null,
+        props: child.props,
+        return: fiber,
+        alternate: null,
+        child: null,
+        sibling: null,
+      }
+    } else {
+      // update
+      newFiber = {
+        type: child.type,
+        stateNode: oldFiber.stateNode,
+        props: child.props,
+        return: fiber,
+        alternate: oldFiber,
+        child: null,
+        sibling: null,
+      }
+    }
+
+    if (oldFiber) {
+      oldFiber = oldFiber.sibling;
     }
 
     if (index === 0) {
@@ -139,6 +173,38 @@ function createRoot(container) {
   return new AReactDomRoot(container);
 }
 
+function useState(initialState) {
+  const oldHook = currentHookFiber.alternate?.memorizedState?.[currentHookIndex];
+
+  const hook = {
+    state: oldHook ? oldHook.state : initialState,
+    queue: [],
+    dispatch: oldHook ? oldHook.dispatch : null,
+  }
+
+  const actions = oldHook ? oldHook.queue : [];
+  actions.forEach(action => {
+    hook.state = typeof action === 'function' ? action(hook.state) : action;
+  })
+
+  const setState = hook.dispatch ? hook.dispatch : (action) => {
+    hook.queue.push(action);
+    // re-rerender
+    workInProgressRoot.current.alternate = {
+      stateNode: workInProgressRoot.current.containerInfo,
+      props: workInProgressRoot.current.props,
+      alternate: workInProgressRoot.current, // 重要!!!!!  交换alternate
+    }
+    workInProgress = workInProgressRoot.current.alternate;
+    window.requestIdleCallback(workloop);
+  }
+
+  currentHookFiber.memorizedState.push(hook);
+  currentHookIndex++;
+
+  return [hook.state, setState];
+}
+
 function act(callback) {
   callback();
   return new Promise(resolve => {
@@ -154,4 +220,4 @@ function act(callback) {
   })
 }
 
-export default { createElement, createRoot, act };
+export default { createElement, createRoot, useState, act };
