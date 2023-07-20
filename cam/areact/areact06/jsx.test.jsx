@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import AReact from './AReact';
 const act = AReact.act;
 
@@ -64,5 +64,40 @@ describe('Hooks', () => {
       globalObj.dispatch({ type: 'add' });
     })
     expect(globalObj.count).toBe(102);
+  })
+})
+
+describe('event binding', () => {
+  it.only('should support event binding', async () => {
+    const container = document.createElement("div");
+    const globalObj = {
+      increase: (count) => count + 1,
+    };
+
+    const increaseSpy = vi.spyOn(globalObj, 'increase');
+
+    function App() {
+      const [count, setCount] = AReact.useState(100);
+      globalObj.count = count;
+      globalObj.setCount = setCount;
+
+      return <div>{count}
+        <button onClick={() => setCount(globalObj.increase)}></button>
+      </div>;
+    }
+
+    // 渲染组件
+    const root = AReact.createRoot(container);
+
+    await act(() => {
+      root.render(<App />);
+    })
+
+    expect(increaseSpy).not.toBeCalled();
+    await act(() => {
+      container.querySelectorAll('button')[0].click();
+      container.querySelectorAll('button')[0].click();
+    })
+    expect(increaseSpy).toBeCalledTimes(2);
   })
 })

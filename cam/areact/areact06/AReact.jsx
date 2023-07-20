@@ -29,7 +29,8 @@ function createTextElement(text) {
 }
 
 // 过滤掉没有children的元素
-const isProperty = (key) => key !== 'children';
+const isProperty = (key) => key !== 'children' & !isEvent(key);
+const isEvent = (key) => key.startsWith('on');
 
 /***
  * 参考React源码实现
@@ -84,6 +85,11 @@ function performUnitOfWork(fiber) {
       fiber.stateNode = fiber.type === 'HostText' ? document.createTextNode('') : document.createElement(fiber.type);
       Object.keys(fiber.props).filter(isProperty).forEach((key) => {
         fiber.stateNode[key] = fiber.props[key];
+      })
+
+      Object.keys(fiber.props).filter(isEvent).forEach((key) => {
+        const eventName = key.toLocaleLowerCase().substring(2);
+        fiber.stateNode.addEventListener(eventName, fiber.props[key]);
       })
     }
 
