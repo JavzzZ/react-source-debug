@@ -191,7 +191,7 @@ function useState(initialState) {
     hook.queue.push(action);
     // re-rerender
     workInProgressRoot.current.alternate = {
-      stateNode: workInProgressRoot.current.containerInfo,
+      stateNode: workInProgressRoot.containerInfo,
       props: workInProgressRoot.current.props,
       alternate: workInProgressRoot.current, // 重要!!!!!  交换alternate
     }
