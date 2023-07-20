@@ -205,6 +205,16 @@ function useState(initialState) {
   return [hook.state, setState];
 }
 
+function useReducer(reducer, initialState) {
+  const [state, setState] = useState(initialState);
+  const dispatch = (action) => {
+    // reducer = (oldState, action) => newState
+    setState((state) => reducer(state, action));
+  }
+
+  return [state, dispatch];
+}
+
 function act(callback) {
   callback();
   return new Promise(resolve => {
@@ -220,4 +230,4 @@ function act(callback) {
   })
 }
 
-export default { createElement, createRoot, useState, act };
+export default { createElement, createRoot, useState, useReducer, act };
