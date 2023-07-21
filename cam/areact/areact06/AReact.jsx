@@ -31,9 +31,9 @@ function createTextElement(text) {
 const isEvent = (key) => key.startsWith('on');
 // 过滤掉没有children的元素
 const isProperty = (key) => key !== 'children' & !isEvent(key);
-const isNew = (prev, next) = (key) => !(key in prev) && (key in next);
-const isGone = (prev, next) = (key) => !(key in next);
-const isChanged = (prev, next) = (key) => key in prev && key in next && prev[key] !== next[key];
+const isNew = (prev, next) => (key) => !(key in prev) && (key in next);
+const isGone = (prev, next) => (key) => !(key in next);
+const isChanged = (prev, next) => (key) => key in prev && key in next && prev[key] !== next[key];
 
 /***
  * 参考React源码实现
@@ -103,7 +103,6 @@ function commitWork(fiber) {
     updateDom(fiber.stateNode, fiber.alternate.props, fiber.props);
   }
 
-
   commitWork(fiber.child);
   commitWork(fiber.sibling);
 }
@@ -112,7 +111,9 @@ function updateDom(stateNode, prevProps, nextProps) {
   // remove old or changed event binding
   Object.keys(prevProps)
     .filter(isEvent)
-    .filter((key) => isGone(prevProps, nextProps)(key) || isChanged(prevProps, nextProps)(key))
+    .filter(
+      (key) => isGone(prevProps, nextProps)(key) || isChanged(prevProps, nextProps)(key)
+    )
     .forEach(key => {
       const eventName = key.toLowerCase().substring(2); // onClick => click
       stateNode.removeEventListener(eventName, prevProps[key]);
@@ -130,7 +131,9 @@ function updateDom(stateNode, prevProps, nextProps) {
   // 遍历 children，比较当前 fiber 和 oldFiber，然后在 fiber 上添加 effectTag
   Object.keys(nextProps)
     .filter(isProperty)
-    .filter(key => isNew(prevProps, nextProps)(key) || isChanged(prevProps, nextProps)(key))
+    .filter(
+      key => isNew(prevProps, nextProps)(key) || isChanged(prevProps, nextProps)(key)
+    )
     .forEach((key) => {
       stateNode[key] = nextProps[key];
     })
@@ -138,7 +141,9 @@ function updateDom(stateNode, prevProps, nextProps) {
   // add new or changed event binding
   Object.keys(nextProps)
     .filter(isEvent)
-    .filter(key => isNew(prevProps, nextProps)(key) || isChanged(prevProps, nextProps)(key))
+    .filter(
+      key => isNew(prevProps, nextProps)(key) || isChanged(prevProps, nextProps)(key)
+    )
     .forEach((key) => {
       const eventName = key.toLocaleLowerCase().substring(2); // onClick => click
       stateNode.addEventListener(eventName, nextProps[key]);
