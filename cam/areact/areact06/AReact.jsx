@@ -57,6 +57,7 @@ class AReactDomRoot {
       }
     }
     workInProgressRoot = this._internalRoot;
+    workInProgressRoot.deletions = [];
     workInProgress = workInProgressRoot.current.alternate;
 
     window.requestIdleCallback(workloop);
@@ -74,6 +75,8 @@ function workloop() {
 }
 
 function commitRoot() {
+  workInProgressRoot.deletions.forEach(commitWork);
+
   commitWork(workInProgressRoot.current.alternate.child);
 
   workInProgressRoot.current = workInProgressRoot.current.alternate;
@@ -101,10 +104,20 @@ function commitWork(fiber) {
     domParentFiber.stateNode.appendChild(fiber.stateNode);
   } else if (fiber.effectTag === 'UPDATE') {
     updateDom(fiber.stateNode, fiber.alternate.props, fiber.props);
+  } else if (fiber.effectTag === 'DELETION') {
+    commitDeletion(fiber, domParentFiber.stateNode);
   }
 
   commitWork(fiber.child);
   commitWork(fiber.sibling);
+}
+
+function commitDeletion(fiber, parentStateNode) {
+  if (fiber.stateNode) {
+    parentStateNode.contains(fiber.stateNode) && parentStateNode.removeChild(fiber.stateNode);
+  } else {
+    commitDeletion(fiber.child, parentStateNode);
+  }
 }
 
 function updateDom(stateNode, prevProps, nextProps) {
@@ -177,7 +190,6 @@ function reconcileChildren(fiber, children) {
   let prevSibling = null;
   // mount 阶段 oldFiber 为空，update 阶段为上一次的值
   let oldFiber = fiber.alternate?.child;
-
   // oldFiber [1,2,3]; newFiber [1,2]
   let index = 0;
   while (index < fiber.props.children.length || oldFiber) {
@@ -211,6 +223,8 @@ function reconcileChildren(fiber, children) {
       }
     } else if (!sameType && oldFiber) {
       // delete
+      oldFiber.effectTag = 'DELETION';
+      workInProgressRoot.deletions.push(oldFiber);
     }
 
     if (oldFiber) {
@@ -220,7 +234,7 @@ function reconcileChildren(fiber, children) {
     if (index === 0) {
       fiber.child = newFiber;
     } else {
-      prevSibling.sibling = newFiber;
+      prevSibling && (prevSibling.sibling = newFiber);
     }
 
     prevSibling = newFiber;
@@ -279,6 +293,7 @@ function useState(initialState) {
       alternate: workInProgressRoot.current, // 重要!!!!!  交换alternate
     }
     workInProgress = workInProgressRoot.current.alternate;
+    workInProgressRoot.deletions = [];
     window.requestIdleCallback(workloop);
   }
 
