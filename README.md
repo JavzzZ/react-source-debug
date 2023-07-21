@@ -28,5 +28,6 @@ yarn start
 3. areact03  Fiber与异步模式
 4. areact04  手写函数式组件
 5. areact05  手写useState & useReducer
+6. areact06  Reconciler协调器
 
 
